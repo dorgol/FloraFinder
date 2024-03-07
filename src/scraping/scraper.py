@@ -77,9 +77,61 @@ class PlantPageScraper:
 
         return tabs_info
 
+    def extract_description(self):
+        if not self.soup:
+            raise ValueError("Soup not initialized. Call fetch_page() first.")
+
+        description_div = self.soup.find('div', class_='info-block description')
+        if not description_div:
+            return ''
+        else:
+
+            # Extract and concatenate all text within the description div
+            description_texts = description_div.find_all(string=True)
+            description = ' '.join(description_texts).strip()
+
+            # Replace multiple whitespace characters with a single space
+            description = ' '.join(description.split())
+
+            return description
+
+    def extract_family(self):
+        if not self.soup:
+            raise ValueError("Soup not initialized. Call fetch_page() first.")
+
+        # Find the 'dt' with the text 'Family:'
+        dt_family = self.soup.find(lambda tag: tag.name == 'dt' and 'Family:' in tag.text)
+        if not dt_family:
+            raise ValueError("No family information found.")
+
+        # Find the 'dd' following the 'dt'
+        dd_family = dt_family.find_next_sibling('dd')
+        if not dd_family:
+            raise ValueError("No family description found.")
+
+        # Extract family name text and link
+        family_name = dd_family.get_text(strip=True)
+        family_link = dd_family.find('a')['href'] if dd_family.find('a') else None
+
+        return {'family_name': family_name, 'family_link': family_link}
+
+    def get_full_data(self):
+        scraper = PlantPageScraper(self.url)
+        scraper.fetch_page()
+
+        images = list(scraper.extract_images())
+        self.download_images(images)
+        # Here you would call the method to download the images if needed
+
+        info_table = scraper.extract_info_table()
+        description = scraper.extract_description()
+        family_info = scraper.extract_family()
+        return info_table, description, family_info
 
 # Example usage
-scraper = PlantPageScraper('https://flora.org.il/en/plants/iriedo/')
+scraper = PlantPageScraper('https://flora.org.il/en/plants/ptevit/')
+
+
 scraper.fetch_page()
 
 # Extract and download images
@@ -88,3 +140,9 @@ scraper.download_images(image_urls)
 
 # Extract information table from multiple tabs
 info_table = scraper.extract_info_table()
+
+description = scraper.extract_description()
+print(description)
+
+family_info = scraper.extract_family()
+print(family_info)
